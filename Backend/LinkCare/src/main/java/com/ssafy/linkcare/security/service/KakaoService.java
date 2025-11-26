@@ -1,7 +1,10 @@
 package com.ssafy.linkcare.security.service;
 
+import com.ssafy.linkcare.background.service.BackgroundService;
+import com.ssafy.linkcare.character.service.CharacterService;
 import com.ssafy.linkcare.exception.CustomException;
 import com.ssafy.linkcare.exception.ErrorCode;
+import com.ssafy.linkcare.point.service.PointService;
 import com.ssafy.linkcare.user.dto.KakaoUserInfo;
 import com.ssafy.linkcare.user.entity.User;
 import com.ssafy.linkcare.user.repository.UserRepository;
@@ -20,12 +23,12 @@ public class KakaoService {
 
     private final UserRepository userRepository;
     private final WebClient webClient;
+    private final CharacterService characterService;
+    private final PointService pointService;
+    private final BackgroundService backgroundService;
 
     @Value("${kakao.user-info-uri}")
     private String userInfoUri;
-
-    @Value("${app.default-profile-image-url}")
-    private String defaultProfileImageUrl;
 
     // Access Token으로 카카오 사용자 정보 조회
     public KakaoUserInfo getUserInfo(String accessToken) {
@@ -56,7 +59,6 @@ public class KakaoService {
         String providerId = kakaoUserInfo.getId().toString();
         String email = kakaoUserInfo.getKakaoAccount().getEmail();
         String nickname = kakaoUserInfo.getKakaoAccount().getProfile().getNickname();
-        String profileImage = kakaoUserInfo.getKakaoAccount().getProfile().getProfileImageUrl();
 
         log.info("카카오 로그인 시도 - email: {}, providerId: {}", email, providerId);
 
@@ -65,21 +67,18 @@ public class KakaoService {
                 .orElseGet(() -> {
                     log.info("신규 카카오 회원 자동 가입 - email: {}", email);
 
-                    // 프로필 이미지 결정 (카카오 이미지 있으면 사용, 없으면 기본 이미지)
-                    String finalProfileImage = (profileImage != null && !profileImage.isEmpty())
-                            ? profileImage
-                            : defaultProfileImageUrl;
-
                     User newUser = User.builder()
                             .email(email)
                             .password(null)  // 소셜 로그인은 비밀번호 없음
                             .name(nickname)
-                            .imageUrl(finalProfileImage)
                             .provider("KAKAO")
                             .providerId(providerId)
                             .build();
 
-                    return userRepository.save(newUser);
+                    userRepository.save(newUser);
+                    pointService.createPointForNewUser(newUser);
+                    backgroundService.assignDefaultBackground(newUser);
+                    return newUser;
                 });
     }
 }

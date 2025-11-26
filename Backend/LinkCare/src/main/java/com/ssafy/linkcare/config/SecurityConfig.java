@@ -46,8 +46,14 @@ public class SecurityConfig {
                                 "/api/auth/send-verification-code",
                                 "/api/auth/verify-code",
                                 "/api/auth/google",
-                                "/api/auth/kakao"
-                        ).permitAll()
+                                "/api/auth/kakao",
+                                "/actuator/health",
+                                "/api/health/**",
+                                "/api/groups/generate-weekly-stats",
+                                "/api/groups/*/goals",
+                                "/api/ai/**"
+
+                ).permitAll()
                         .anyRequest().authenticated()
                 );
         return http.build();
